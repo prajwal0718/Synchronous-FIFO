@@ -10,9 +10,9 @@ module sync_fifo(
  dout
     );
 
-parameter PTR_WIDTH = 3;
+parameter PTR_WIDTH = 3;  //ptr_width parameter must be set to log to the base 2 of FIFO depth.
 parameter DATA_WIDTH = 8;
-parameter DEPTH = 8;
+parameter DEPTH = 8;   //  Depth of the FIFO must be in powers of 2 
 
 input clk;
 input rstn;
