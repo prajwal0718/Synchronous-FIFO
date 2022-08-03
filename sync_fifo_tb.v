@@ -23,7 +23,7 @@ module Fifo_tb;
   .dout(dout)
  );
 
- always #5 clk = ~clk;
+ always #5 clk = ~clk;  // CLOCK Generation.
  
  task reset();
  begin
