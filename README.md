@@ -1,5 +1,3 @@
-# Verilog-and-systemverilog
-Verilog and systemverilog projects
 
 Synchronous FIFO
 
@@ -15,13 +13,8 @@ Empty and Full Condition:
 We have rdptr and wrptr. When both the pointers are equal, the FIFO could either be empty or full.
 --If the last operation was write and the pointers become equal, then the FIFO is full.
 --If the last operation was read and the pointers become equal, then the FIFO is empty.
-So we use another variable 'fullchk' to check if the last operation was write and the FIFO became full. Then this can be used to assert full signal.
-Similarly if 'emptychk' is there, then we can say that the FIFO is empty.
 
-Verilog Code Logic:
-1) Use variables rdptr to traverse read location and wrptr to traverse write locations in memory.
-2) During push signal, write to the memory and increment wrptr.
-3) During pop, read from the memory and decrement rdptr.
-4) Empty is asserted when pointers are equal and there is emptychk. Deasserted when a push occurs.
-5) Full occurs when there is fullchk. Deasserted when a pop occurs.
+Synchronous FIFO implemented in Xilinx Vivado
+<img width="498" alt="Synchronous_FIFO" src="https://user-images.githubusercontent.com/65390753/183115791-fd97df20-bd62-4331-bcdc-8d144a58b355.PNG">
+
 
