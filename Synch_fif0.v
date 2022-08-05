@@ -1,82 +1,71 @@
 //Prajwal D Nayak.
-module sync_fifo(
- clk,
- rstn,
- pop,
- push,
- empty,
- full,
- din,
- dout
-    );
+`timescale 1ns / 1ps
 
-parameter PTR_WIDTH = 3;  //ptr_width parameter must be set to log to the base 2 of FIFO depth.
-parameter DATA_WIDTH = 8;
-parameter DEPTH = 8;   //  Depth of the FIFO must be in powers of 2 
+module sync_fifo(data_in ,clk , rst , rd_en, wr_en, empty , full , fifo_count , data_out);
+input[7:0] data_in;
+input clk , rst , rd_en , wr_en;
+output empty , full;
+output reg [3:0]fifo_count;
+output reg [7:0] data_out;
 
-input clk;
-input rstn;
-input pop;
-input push;
- input [DATA_WIDTH-1:0]din;    //writing to the memory we need din.
+//input [WIDTH-1:0].
+// Fifo_count has one additional bit actually $clog2(DEPTH) = 3 but here we need one extra bit for reperesenting the Wrap bit for FULL condition
+reg [7:0] fifo_ram[0:7];  // creation of Memory
+reg [2:0] rd_ptr , wr_ptr; // Pounters width of 3 bit.
 
- output [DATA_WIDTH-1:0]dout;    //To read from the memory we need dout.
-output empty;
-output full;
-// all are reg data type as they are defined inside always block.
- reg [DATA_WIDTH-1:0]fifo[DEPTH-1:0];     //Creating the memory(RAM) to store the data.
-reg [PTR_WIDTH-1:0]rdptr, next_rdptr;
- reg [PTR_WIDTH-1:0]wrptr, next_wrptr;    // Declaring read pointer and the write pointers.
-reg [DATA_WIDTH-1:0]dout, next_dout;
-reg empty, next_empty;
-reg full, next_full;
+//Creating empty and Full condition
+assign empty = (fifo_count == 0);
+assign full = (fifo_count == 8); //To represent 8 we need 4 bit so count taken as 4 bit 
 
- assign fullchk = push && !(|(wrptr^(rdptr-1'b1)));  //'fullchk' to check if the last operation was write and the FIFO became full
-assign emptychk = pop && !(|(rdptr^(wrptr-1'b1)));
-
-always @ (posedge clk) //Sequential block
-begin
-  if(!rstn)
-  begin
-    dout    <= 8'd0;
-    empty   <= 1'b1;
-    full    <= 1'b0;
-    rdptr   <= 1'b0;
-    wrptr   <= 1'b0;
-  end
-  else
-  begin
-    dout    <= next_dout;
-    empty   <= next_empty;
-    full    <= next_full; 
-    rdptr   <= next_rdptr;
-    wrptr   <= next_wrptr;
-  end
+//Write and Read Blocks
+always@(posedge clk) begin:write
+    if(wr_en && !full)
+        fifo_ram[wr_ptr] <= data_in;  // if wr_en HIGH and Buffer not full we can write data in buffer
+   else if(wr_en && rd_en)
+        fifo_ram[wr_ptr] <=data_in;    //If both read and write enable are HIGH also we can write data  
 end
-
-always @ (*) //Combinational Block
-begin
-  next_dout    = dout;
-  next_empty   = emptychk ? 1'b1 : push ? 1'b0 : empty;
-  next_full    = fullchk ? 1'b1 : pop ? 1'b0 : full;
-  next_rdptr   = rdptr;
-  next_wrptr   = wrptr;
  
-  if(push)  //write
-  begin
-   fifo[wrptr] = din;   // In write data is written into memory 
-  next_wrptr  = wrptr+1;  // after writing data into memory the write pointer gets incremented.
-  end
- else if(pop)  //read 
-  begin
-   next_dout    = fifo[rdptr];    // data is read from the memory using read pointer
-  next_rdptr   = rdptr+1;    // after data is read from memory the pointer also gets incremented
-  end
-  else
-  begin
-  next_dout  = dout;    // bY DEFAULT no change it must remain same, this is given in else condition.
-  next_rdptr = rdptr;
-  next_wrptr = wrptr;
-  end 
+always@(posedge clk) begin:read
+    if(rd_en && !empty)
+        data_out <= fifo_ram[rd_ptr];  // if wr_en HIGH and Buffer not full we can write data in buffer
+   else if(wr_en && rd_en)
+        data_out <= fifo_ram[rd_ptr];   //If both read and write enable are HIGH also we can write data  
 end
+ 
+ 
+ // Pointer Block 
+ //After writing to each location it must also got to nect location by incrementing the pointer
+ 
+ always@(posedge clk) begin:pointer
+    if(rst) 
+       begin
+        wr_ptr <=0;
+        rd_ptr<=0;
+       end
+    else
+    begin
+       wr_ptr<= ((wr_en &&!full)||(wr_en && rd_en))? wr_ptr+1 : wr_ptr;  //use conditional operator
+       //write enable and not full or both enable then increment the write pointer else remain in same position
+       
+       rd_ptr<= ((rd_en &&!empty)||(wr_en && rd_en))? rd_ptr+1 : rd_ptr;
+    end
+ end
+ 
+ 
+ //Fifo Counter OPeration
+ always@(posedge clk) begin:count
+    if(rst) fifo_count<=0;
+    else begin
+        case({wr_en , rd_en})
+            2'b00 : fifo_count <= fifo_count;
+            2'b01 : fifo_count <= (fifo_count==0) ? 0 : fifo_count-1;
+            // After read operation data comes out of the Buffer thus count of data is reduced by one after read operation in FIFO
+            2'b10 : fifo_count <= (fifo_count==8) ? 8 : fifo_count +1;
+            //After any data written inside the Buffer the count will be increase by one thus the fifo_count increases
+            2'b11 : fifo_count <= fifo_count;
+            default: fifo_count <=fifo_count;
+        endcase
+      end
+    end
+ 
 endmodule
